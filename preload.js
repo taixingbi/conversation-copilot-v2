@@ -1,1 +1,5 @@
-// Isolated preload. Overlay UI talks to the Python backend over WebSocket only.
+const { contextBridge, ipcRenderer } = require("electron");
+
+contextBridge.exposeInMainWorld("copilot", {
+  quit: () => ipcRenderer.send("copilot-quit"),
+});

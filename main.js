@@ -1,4 +1,4 @@
-const { app, BrowserWindow, screen } = require("electron");
+const { app, BrowserWindow, ipcMain, screen } = require("electron");
 const { spawn } = require("child_process");
 const http = require("http");
 const fs = require("fs");
@@ -38,15 +38,12 @@ async function waitFor(url, tries = 120) {
 
 async function pickPort(start) {
   const base = Number(start || process.env.OVERLAY_PORT || 8765);
-  let free = null;
   for (let port = base; port < base + 16; port++) {
     const url = `http://127.0.0.1:${port}/`;
     const state = await probe(url);
-    if (state === "ok") return { url, port, running: true };
-    if (state === "free" && free == null) free = { url, port, running: false };
-    else if (state === "stale") console.log("skipping stale overlay port", port);
+    if (state === "free") return { url, port };
+    console.log("skipping busy overlay port", port);
   }
-  if (free) return free;
   throw new Error("no free overlay port");
 }
 
@@ -105,6 +102,14 @@ function createWindow(url) {
   win.webContents.on("did-fail-load", (_e, code, desc) => {
     console.error("load failed", code, desc);
   });
+  win.webContents.on("before-input-event", (event, input) => {
+    if (input.type !== "keyDown") return;
+    const quitKey = input.key === "w" || input.key === "q" || input.key === "W" || input.key === "Q";
+    if (quitKey && (input.meta || input.control)) {
+      event.preventDefault();
+      app.quit();
+    }
+  });
   win.loadURL(url);
 }
 
@@ -118,17 +123,13 @@ app.whenReady().then(async () => {
     } else {
       const picked = await pickPort();
       url = picked.url;
-      if (picked.running) {
-        console.log("backend already running");
-      } else {
-        if (picked.port !== Number(process.env.OVERLAY_PORT || 8765)) {
-          console.log("port busy, using", picked.port);
-        }
-        console.log("starting python backend…");
-        spawnBackend(url);
-        await waitFor(url);
-        console.log("backend ready");
+      if (picked.port !== Number(process.env.OVERLAY_PORT || 8765)) {
+        console.log("port busy, using", picked.port);
       }
+      console.log("starting python backend…");
+      spawnBackend(url);
+      await waitFor(url);
+      console.log("backend ready");
     }
   } catch (err) {
     console.error(err.message);
@@ -137,6 +138,7 @@ app.whenReady().then(async () => {
   console.log("window open — look at the top-right of the screen (no dock icon)");
 });
 
+ipcMain.on("copilot-quit", () => app.quit());
 app.on("before-quit", () => {
   if (backend && !backend.killed) backend.kill();
 });
