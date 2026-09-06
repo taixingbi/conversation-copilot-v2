@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Copilot</title>
+  <style>
+    :root {
+      --bg: rgba(10, 12, 16, 0.78);
+      --line: rgba(255, 255, 255, 0.08);
+      --muted: #64748b;
+    }
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: transparent;
+      color: #e2e8f0;
+      font: 13px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+      overflow: hidden;
+    }
+    .wrap {
+      box-sizing: border-box;
+      height: 100%;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+    }
+    .panel {
+      background: var(--bg);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      flex: 1;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px 8px;
+      border-bottom: 1px solid var(--line);
+      -webkit-app-region: drag;
+    }
+    header strong {
+      font-size: 12px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #cbd5e1;
+    }
+    .hdr-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      -webkit-app-region: no-drag;
+    }
+    .icon-btn {
+      appearance: none;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--line);
+      color: #94a3b8;
+      border-radius: 8px;
+      width: 26px;
+      height: 26px;
+      font: 13px/1 inherit;
+      cursor: pointer;
+      padding: 0;
+    }
+    .icon-btn:hover, .icon-btn.on { color: #e2e8f0; background: rgba(255, 255, 255, 0.12); }
+    #dot { width: 8px; height: 8px; border-radius: 50%; background: #f87171; }
+    #dot.on { background: #4ade80; }
+    #settings {
+      display: none;
+      padding: 10px 12px 12px;
+      border-bottom: 1px solid var(--line);
+      -webkit-app-region: no-drag;
+    }
+    #settings.open { display: block; }
+    #settings label {
+      display: block;
+      font-size: 10px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #94a3b8;
+      margin: 8px 0 4px;
+    }
+    #settings label:first-child { margin-top: 0; }
+    #settings input, #settings select {
+      width: 100%;
+      box-sizing: border-box;
+      background: #14171e;
+      border: 1px solid var(--line);
+      color: #e2e8f0;
+      border-radius: 8px;
+      padding: 7px 9px;
+      font: 12px/1.4 inherit;
+    }
+    #settings .row {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    #settings .row button {
+      appearance: none;
+      border: 0;
+      border-radius: 8px;
+      padding: 7px 10px;
+      font: 12px/1 inherit;
+      cursor: pointer;
+    }
+    #cfg-save { background: #ffcc4d; color: #1a1a1a; font-weight: 600; }
+    #cfg-clear { background: rgba(255, 255, 255, 0.08); color: #cbd5e1; }
+    #cfg-note { margin-top: 8px; font-size: 11px; color: var(--muted); min-height: 1.2em; }
+    #current {
+      padding: 10px 10px 8px;
+      flex: 0 0 auto;
+    }
+    #history {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 0 10px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .qa-card {
+      display: grid;
+      grid-template-columns: 32px 1fr;
+      gap: 4px 10px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      background: #1c1f26;
+      position: relative;
+    }
+    .qa-card.current {
+      background: #23262f;
+      border-left: 3px solid #ffcc4d;
+    }
+    .qa-card:not(.current) { opacity: 0.7; }
+    .qa-card.draft .a-text { color: #cbd5e1; }
+    .q-label, .a-label {
+      font-weight: 700;
+      font-size: 13px;
+      padding-top: 2px;
+    }
+    .q-label { color: #ffcc4d; }
+    .a-label { color: #4ade80; }
+    .q-text {
+      color: #e5e7eb;
+      font-size: 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding-bottom: 8px;
+      margin-bottom: 8px;
+    }
+    .a-text {
+      color: #f1f5f9;
+      font-size: 17px;
+      line-height: 1.5;
+    }
+    .qa-badge {
+      position: absolute;
+      top: 8px;
+      right: 34px;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      color: #cbd5e1;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 999px;
+      padding: 2px 7px;
+    }
+    .qa-del {
+      position: absolute;
+      top: 6px;
+      right: 8px;
+      width: 22px;
+      height: 22px;
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      color: #64748b;
+      font: 16px/1 inherit;
+      cursor: pointer;
+      padding: 0;
+    }
+    .qa-del:hover { color: #fecaca; background: rgba(248, 113, 113, 0.12); }
+    .dots::after {
+      content: ".";
+      animation: dots 1s steps(3, end) infinite;
+    }
+    @keyframes dots {
+      0% { content: "."; }
+      33% { content: ".."; }
+      66% { content: "..."; }
+    }
+    #tx-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 6px 12px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 11px;
+    }
+    #tx-toggle {
+      background: none;
+      border: 0;
+      color: var(--muted);
+      cursor: pointer;
+      font: inherit;
+      padding: 0;
+    }
+    #tx-toggle:hover { color: #94a3b8; }
+    #tx-last {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      opacity: 0.7;
+    }
+    #transcript {
+      display: none;
+      max-height: 22vh;
+      overflow-y: auto;
+      padding: 4px 12px 8px;
+      border-top: 1px solid var(--line);
+      font-size: 11px;
+      line-height: 1.4;
+      color: #64748b;
+    }
+    #transcript.open { display: block; }
+    #transcript .t { opacity: 0.75; }
+    #transcript .t.ext { color: #7dd3fc; opacity: 0.85; }
+    footer {
+      padding: 4px 12px 7px;
+      color: var(--muted);
+      font-size: 10px;
+      border-top: 1px solid var(--line);
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="panel">
+      <header>
+        <strong>Interview copilot</strong>
+        <div class="hdr-actions">
+          <button id="cfg-toggle" class="icon-btn" type="button" title="Settings">⚙</button>
+          <span id="dot"></span>
+        </div>
+      </header>
+      <form id="settings" autocomplete="off">
+        <label for="cfg-llm">LLM_MODEL</label>
+        <input id="cfg-llm" name="llm_model" type="text" spellcheck="false" />
+        <label for="cfg-whisper">WHISPER_MODEL</label>
+        <select id="cfg-whisper" name="whisper_model"></select>
+        <div class="row">
+          <button id="cfg-save" type="submit">Save</button>
+          <button id="cfg-clear" type="button">Clear all</button>
+        </div>
+        <div id="cfg-note"></div>
+      </form>
+      <div id="current"></div>
+      <div id="history"></div>
+      <div id="tx-bar">
+        <button id="tx-toggle" type="button">Transcript ▸</button>
+        <span id="tx-last"></span>
+      </div>
+      <div id="transcript"></div>
+      <footer id="lat"></footer>
+    </section>
+  </div>
+  <script>
+    const currentBox = document.getElementById("current");
+    const historyBox = document.getElementById("history");
+    const transcript = document.getElementById("transcript");
+    const txToggle = document.getElementById("tx-toggle");
+    const txLast = document.getElementById("tx-last");
+    const lat = document.getElementById("lat");
+    const dot = document.getElementById("dot");
+    const settings = document.getElementById("settings");
+    const cfgToggle = document.getElementById("cfg-toggle");
+    const cfgLlm = document.getElementById("cfg-llm");
+    const cfgWhisper = document.getElementById("cfg-whisper");
+    const cfgNote = document.getElementById("cfg-note");
+    const cfgClear = document.getElementById("cfg-clear");
+    let current = null;
+    const cards = new Map();
+    const deletedAt = new Map();
+
+    txToggle.addEventListener("click", () => {
+      const open = transcript.classList.toggle("open");
+      txToggle.textContent = open ? "Transcript ▾" : "Transcript ▸";
+    });
+    cfgToggle.addEventListener("click", () => {
+      const open = settings.classList.toggle("open");
+      cfgToggle.classList.toggle("on", open);
+      if (open) loadConfig();
+    });
+    settings.addEventListener("submit", (e) => {
+      e.preventDefault();
+      saveConfig();
+    });
+    cfgClear.addEventListener("click", () => {
+      clearAllCards(true);
+    });
+
+    function esc(s) {
+      return String(s ?? "").replace(/[&<>"']/g, (c) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      }[c]));
+    }
+    function fmtMs(ms) {
+      if (ms == null || ms === "") return "";
+      const n = Number(ms);
+      if (!Number.isFinite(n)) return "";
+      if (n < 0) return "prefetch";
+      if (n >= 1000) return (n / 1000).toFixed(1) + "s";
+      return Math.round(n) + "ms";
+    }
+    function badgeText(ev) {
+      return fmtMs(ev.ext_ms != null ? ev.ext_ms : ev.ttft_ms);
+    }
+    function makeCard(isCurrent) {
+      const el = document.createElement("div");
+      el.className = "qa-card" + (isCurrent ? " current" : "");
+      el.innerHTML =
+        `<span class="qa-badge" hidden></span>` +
+        `<button class="qa-del" type="button" title="Delete" aria-label="Delete">×</button>` +
+        `<div class="q-label">Q</div><div class="q-text"></div>` +
+        `<div class="a-label">A</div><div class="a-text"><span class="dots"></span></div>`;
+      return el;
+    }
+    function fillCard(el, ev) {
+      const draft = ev.kind === "draft" || ev.kind === "fast";
+      el.classList.toggle("draft", draft);
+      el.querySelector(".q-text").textContent = ev.question || "";
+      const aEl = el.querySelector(".a-text");
+      if (ev.answer) {
+        aEl.textContent = ev.answer;
+      } else {
+        aEl.innerHTML = '<span class="dots"></span>';
+      }
+      const badge = el.querySelector(".qa-badge");
+      const text = badgeText(ev);
+      if (text) {
+        badge.hidden = false;
+        badge.textContent = text;
+      }
+    }
+    function normQ(q) {
+      return String(q || "").toLowerCase().replace(/[^a-z0-9\u4e00-\u9fff]+/g, " ").trim();
+    }
+    function sameQuestion(prev, next) {
+      const a = normQ(prev);
+      const b = normQ(next);
+      if (!a || !b) return !b;
+      if (a === b) return true;
+      const shorter = a.length <= b.length ? a : b;
+      const longer = a.length <= b.length ? b : a;
+      if (longer.startsWith(shorter) && shorter.length / Math.max(longer.length, 1) >= 0.85) return true;
+      return false;
+    }
+    function rememberCard(card) {
+      const key = normQ(card.q);
+      if (key) cards.set(key, card);
+    }
+    function findCard(q) {
+      const n = normQ(q);
+      if (!n) return current;
+      if (cards.has(n)) return cards.get(n);
+      for (const [k, card] of cards) {
+        if (sameQuestion(k, n)) return card;
+      }
+      if (current && sameQuestion(current.q, q)) return current;
+      return null;
+    }
+    function archiveCurrent() {
+      if (!current) return;
+      current.el.classList.remove("current");
+      historyBox.prepend(current.el);
+      rememberCard(current);
+      current = null;
+    }
+    function cardFromEl(el) {
+      if (current && current.el === el) return current;
+      for (const card of cards.values()) {
+        if (card.el === el) return card;
+      }
+      return null;
+    }
+    function forgetCardKeys(card) {
+      for (const [k, c] of [...cards]) {
+        if (c === card) cards.delete(k);
+      }
+    }
+    function recentlyDeleted(q) {
+      const n = normQ(q);
+      if (!n) return false;
+      const t = deletedAt.get(n);
+      if (!t) return false;
+      if (Date.now() - t > 4000) {
+        deletedAt.delete(n);
+        return false;
+      }
+      return true;
+    }
+    function removeCard(card, notify) {
+      if (!card) return;
+      const q = card.q || "";
+      if (normQ(q)) deletedAt.set(normQ(q), Date.now());
+      forgetCardKeys(card);
+      card.el.remove();
+      if (current === card) {
+        current = null;
+        currentBox.replaceChildren();
+      }
+      if (notify) {
+        fetch("/api/qa/delete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ question: q }),
+        }).catch(() => {});
+      }
+    }
+    function clearAllCards(notify) {
+      for (const card of [...cards.values()]) removeCard(card, false);
+      if (current) removeCard(current, false);
+      cards.clear();
+      currentBox.replaceChildren();
+      historyBox.replaceChildren();
+      if (notify) {
+        fetch("/api/qa/delete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ question: "" }),
+        }).catch(() => {});
+      }
+    }
+    function fillConfig(cfg) {
+      if (!cfg) return;
+      if (cfg.llm_model) cfgLlm.value = cfg.llm_model;
+      const opts = cfg.whisper_options || [];
+      if (opts.length && cfgWhisper.options.length !== opts.length) {
+        cfgWhisper.innerHTML = opts.map((m) => `<option value="${esc(m)}">${esc(m)}</option>`).join("");
+      }
+      if (cfg.whisper_model) cfgWhisper.value = cfg.whisper_model;
+      cfgWhisper.disabled = !!cfg.whisper_loading;
+      if (cfg.whisper_loading) cfgNote.textContent = "Loading Whisper " + cfg.whisper_model + "…";
+    }
+    async function loadConfig() {
+      try {
+        const res = await fetch("/api/config");
+        fillConfig(await res.json());
+      } catch (e) {
+        cfgNote.textContent = "Could not load settings";
+      }
+    }
+    async function saveConfig() {
+      cfgNote.textContent = "Saving…";
+      try {
+        const res = await fetch("/api/config", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            llm_model: cfgLlm.value.trim(),
+            whisper_model: cfgWhisper.value,
+          }),
+        });
+        const cfg = await res.json();
+        if (!res.ok) {
+          cfgNote.textContent = cfg.error || "Save failed";
+          return;
+        }
+        fillConfig(cfg);
+        cfgNote.textContent = cfg.whisper_loading
+          ? "Saved. Loading Whisper " + cfg.whisper_model + "…"
+          : "Saved";
+      } catch (e) {
+        cfgNote.textContent = "Save failed";
+      }
+    }
+    document.querySelector(".panel").addEventListener("click", (e) => {
+      const btn = e.target.closest(".qa-del");
+      if (!btn) return;
+      e.preventDefault();
+      removeCard(cardFromEl(btn.closest(".qa-card")), true);
+    });
+    function onEvent(ev) {
+      if (ev.type === "transcript") {
+        const row = document.createElement("div");
+        const ext = String(ev.label || "").startsWith("EXT");
+        row.className = "t" + (ext ? " ext" : "");
+        row.innerHTML = `<span>${esc(ev.ts)}</span> [${esc(ev.label)}] ${esc(ev.text)}`;
+        transcript.appendChild(row);
+        transcript.scrollTop = transcript.scrollHeight;
+        txLast.textContent = `[${ev.label}] ${ev.text || ""}`;
+      } else if (ev.type === "qa") {
+        const draft = ev.kind === "draft" || ev.kind === "fast";
+        const q = ev.question || "";
+        if (recentlyDeleted(q)) return;
+        let card = findCard(q);
+        if (card) {
+          if (q && normQ(q) !== normQ(card.q)) {
+            cards.delete(normQ(card.q));
+            card.q = q;
+          } else if (q) {
+            card.q = q;
+          }
+          rememberCard(card);
+          fillCard(card.el, ev);
+          if (ev.done && !draft) card.done = true;
+          return;
+        }
+        if (current && q && current.q && !sameQuestion(current.q, q)) archiveCurrent();
+        if (!current) {
+          const el = makeCard(true);
+          currentBox.replaceChildren(el);
+          current = { el, q, done: false };
+        }
+        current.q = q || current.q;
+        rememberCard(current);
+        fillCard(current.el, ev);
+        if (ev.done && !draft) current.done = true;
+      } else if (ev.type === "lat") {
+        lat.textContent = ev.text || "";
+        if (current) {
+          const badge = current.el.querySelector(".qa-badge");
+          const text = badgeText(ev);
+          if (text) {
+            badge.hidden = false;
+            badge.textContent = text;
+          }
+        }
+      } else if (ev.type === "status") {
+        if (!lat.textContent) lat.textContent = ev.text || "";
+        if (settings.classList.contains("open") && ev.text) cfgNote.textContent = ev.text;
+      } else if (ev.type === "config") {
+        fillConfig(ev);
+      } else if (ev.type === "qa_gone") {
+        const q = ev.question || "";
+        if (!q) {
+          clearAllCards(false);
+          return;
+        }
+        const card = findCard(q);
+        if (card) removeCard(card, false);
+      }
+    }
+
+    function connect() {
+      const proto = location.protocol === "https:" ? "wss" : "ws";
+      const ws = new WebSocket(proto + "://" + location.host + "/ws");
+      ws.onopen = () => { dot.classList.add("on"); };
+      ws.onclose = () => { dot.classList.remove("on"); setTimeout(connect, 800); };
+      ws.onerror = () => ws.close();
+      ws.onmessage = (m) => {
+        try { onEvent(JSON.parse(m.data)); } catch (e) {}
+      };
+    }
+    loadConfig();
+    connect();
+  </script>
+</body>
+</html>

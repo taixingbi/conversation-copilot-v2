@@ -1,0 +1,45 @@
+# Whisper: metal (pywhispercpp/GPU) or faster (faster-whisper int8). auto picks faster if installed.
+# Models: tiny | base | small | medium | large | distil-small | distil-medium | distil-large
+# distil-* needs WHISPER_BACKEND=faster (or auto). Compare latency with tiny/base + faster int8.
+WHISPER_MODEL=medium
+WHISPER_BACKEND=metal
+# WHISPER_DEVICE=cpu
+# WHISPER_COMPUTE=int8
+# Rolling STT snapshots while speaking (seconds). 0 = wait for VAD silence. 0.3–0.5 is true streaming.
+STT_CHUNK_SEC=0.4
+
+# Audio devices: index or name substring. Empty = default mic / auto-detect loopback.
+# List devices:  python main.py --list-devices
+AUDIO_DEVICE=C270
+EXTERNAL_AUDIO_DEVICE=BlackHole
+
+# Online speaker tracking (sherpa-onnx embeddings). 0 = keep plain [MIC]/[EXT].
+# MIC-0 = webcam speaker 0, MIC-1 = webcam speaker 1. Same for EXT on Zoom.
+SPEAKER_TRACKING=1
+SPEAKER_THRESHOLD=0.50
+SPEAKER_MAX=4
+
+# OpenAI-compatible /v1/chat/completions (Bedrock Function URL, vLLM, or Ollama).
+# Local / private (preferred for interviews — no transcript leaves your network):
+#   FUNCTION_URL=http://127.0.0.1:11434          # Ollama
+#   LLM_MODEL=qwen2.5:7b
+#   FUNCTION_URL=http://127.0.0.1:8000           # vLLM
+#   LLM_MODEL=Qwen/Qwen2.5-7B-Instruct
+# Remote Bedrock proxy:
+# https://github.com/taixingbi/bedrock-tenants
+FUNCTION_URL=https://qxilkeb5oiywg7gsdarjzbaq3m0yetpq.lambda-url.us-east-1.on.aws/
+INFERENCE_API_KEY=1234
+LLM_MODEL=qwen3-next-80b-a3b
+# Optional small/fast model for a one-sentence draft (<1s). Empty = same as LLM_MODEL.
+# LLM_FAST_MODEL=qwen2.5-7b-instruct
+
+# Overlay UI. Electron uses setContentProtection (hidden in Zoom share / recording).
+OVERLAY=1
+OVERLAY_PORT=8765
+# Dev window:  npm start
+# Pack app:    npm run backend && npm run dist   → dist/Interview Copilot.app
+
+# Resume / STAR notes: put *.md in profile/ (example.md is ignored unless PROFILE_INCLUDE_EXAMPLE=1)
+# PROFILE_DIR=profile
+QA_HISTORY=6
+

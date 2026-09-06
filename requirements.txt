@@ -1,0 +1,11 @@
+numpy
+sounddevice
+sherpa-onnx
+# Install pywhispercpp with Metal separately (see run.sh):
+#   CMAKE_ARGS="-DGGML_METAL=ON" pip install git+https://github.com/absadiki/pywhispercpp --no-binary=pywhispercpp
+# Optional lower-latency STT (WHISPER_BACKEND=faster, WHISPER_MODEL=distil-small or base):
+#   pip install faster-whisper
+# Optional Mac overlay window hidden from screen share:
+#   pip install pyobjc-framework-Cocoa pyobjc-framework-WebKit
+# Pack the backend for the Electron .app:
+#   pip install pyinstaller

@@ -1,0 +1,44 @@
+{
+  "name": "interview-copilot",
+  "version": "1.0.0",
+  "private": true,
+  "main": "main.js",
+  "scripts": {
+    "postinstall": "node node_modules/electron/install.js",
+    "start": "electron .",
+    "backend": "venv/bin/python -m PyInstaller --noconfirm --distpath dist-backend --workpath dist-backend/build packaging/copilot-backend.spec",
+    "dist": "electron-builder"
+  },
+  "devDependencies": {
+    "electron": "^36.9.5",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.taixing.interview-copilot",
+    "productName": "Interview Copilot",
+    "files": [
+      "main.js",
+      "preload.js"
+    ],
+    "extraResources": [
+      {
+        "from": "dist-backend/copilot-backend",
+        "to": "copilot-backend"
+      }
+    ],
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.productivity",
+      "identity": null
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "directories": {
+      "output": "dist"
+    }
+  },
+  "allowScripts": {
+    "electron@36.9.5": true
+  }
+}
