@@ -4,17 +4,55 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>conversation-copilot</title>
+  <script>
+    document.documentElement.dataset.theme = localStorage.getItem("overlay-theme") === "white" ? "white" : "black";
+  </script>
   <style>
-    :root {
-      --bg: rgba(10, 12, 16, 0.78);
-      --line: rgba(255, 255, 255, 0.08);
-      --muted: #64748b;
+    :root, [data-theme="black"] {
+      --bg: rgba(28, 28, 30, 0.86);
+      --line: rgba(255, 255, 255, 0.1);
+      --muted: #98989d;
+      --text: #f5f5f7;
+      --title: #f5f5f7;
+      --input: #1c1c1e;
+      --card: #2c2c2e;
+      --card-current: #3a3a3c;
+      --accent: #0a84ff;
+      --ok: #30d158;
+      --ext: #64d2ff;
+      --hairline: rgba(255, 255, 255, 0.1);
+      --chip: rgba(255, 255, 255, 0.08);
+      --btn: rgba(255, 255, 255, 0.08);
+      --label: #98989d;
+      --draft: #d1d1d6;
+      --save-fg: #fff;
+      --shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+    }
+    [data-theme="white"] {
+      --bg: rgba(246, 246, 247, 0.92);
+      --line: rgba(0, 0, 0, 0.08);
+      --muted: #6e6e73;
+      --text: #1d1d1f;
+      --title: #1d1d1f;
+      --input: #ffffff;
+      --card: #ffffff;
+      --card-current: #ffffff;
+      --accent: #007aff;
+      --ok: #34c759;
+      --ext: #007aff;
+      --hairline: rgba(0, 0, 0, 0.08);
+      --chip: rgba(0, 0, 0, 0.06);
+      --btn: rgba(0, 0, 0, 0.05);
+      --label: #6e6e73;
+      --draft: #6e6e73;
+      --save-fg: #fff;
+      --shadow: 0 10px 32px rgba(0, 0, 0, 0.12);
     }
     html, body {
       margin: 0;
       height: 100%;
       background: transparent;
-      color: #e2e8f0;
+      color: var(--text);
       font: 13px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
       overflow: hidden;
     }
@@ -31,7 +69,7 @@
       border-radius: 14px;
       backdrop-filter: blur(18px);
       -webkit-backdrop-filter: blur(18px);
-      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+      box-shadow: var(--shadow);
       display: flex;
       flex-direction: column;
       min-height: 0;
@@ -49,7 +87,7 @@
       font-size: 12px;
       letter-spacing: 0.04em;
       text-transform: uppercase;
-      color: #cbd5e1;
+      color: var(--title);
     }
     .hdr-actions {
       display: flex;
@@ -59,9 +97,9 @@
     }
     .icon-btn {
       appearance: none;
-      background: rgba(255, 255, 255, 0.06);
+      background: var(--btn);
       border: 1px solid var(--line);
-      color: #94a3b8;
+      color: var(--muted);
       border-radius: 8px;
       width: 26px;
       height: 26px;
@@ -69,7 +107,7 @@
       cursor: pointer;
       padding: 0;
     }
-    .icon-btn:hover, .icon-btn.on { color: #e2e8f0; background: rgba(255, 255, 255, 0.12); }
+    .icon-btn:hover, .icon-btn.on { color: var(--text); background: rgba(255, 255, 255, 0.12); }
     #quit-btn {
       width: auto;
       padding: 0 8px;
@@ -80,6 +118,31 @@
       border-color: rgba(248, 113, 113, 0.4);
     }
     #quit-btn:hover { color: #fff; background: rgba(248, 113, 113, 0.4); }
+    #sum-btn { width: auto; padding: 0 8px; font-size: 11px; font-weight: 600; }
+    #summary {
+      display: none;
+      padding: 10px 12px 12px;
+      border-bottom: 1px solid var(--line);
+      -webkit-app-region: no-drag;
+    }
+    #summary.open { display: block; }
+    #summary .sum-hd {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+      font-size: 10px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--label);
+    }
+    #sum-text {
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.45;
+      white-space: pre-wrap;
+    }
+    #sum-text.pending { color: var(--muted); }
     #dot { width: 8px; height: 8px; border-radius: 50%; background: #f87171; }
     #dot.on { background: #4ade80; }
     #settings {
@@ -94,16 +157,20 @@
       font-size: 10px;
       letter-spacing: 0.04em;
       text-transform: uppercase;
-      color: #94a3b8;
+      color: var(--label);
       margin: 8px 0 4px;
     }
     #settings label:first-child { margin-top: 0; }
-    #settings input, #settings select {
+    #settings textarea {
+      min-height: 92px;
+      resize: vertical;
+    }
+    #settings input, #settings select, #settings textarea {
       width: 100%;
       box-sizing: border-box;
-      background: #14171e;
+      background: var(--input);
       border: 1px solid var(--line);
-      color: #e2e8f0;
+      color: var(--text);
       border-radius: 8px;
       padding: 7px 9px;
       font: 12px/1.4 inherit;
@@ -121,8 +188,39 @@
       font: 12px/1 inherit;
       cursor: pointer;
     }
-    #cfg-save { background: #ffcc4d; color: #1a1a1a; font-weight: 600; }
-    #cfg-clear { background: rgba(255, 255, 255, 0.08); color: #cbd5e1; }
+    #cfg-save { background: var(--accent); color: var(--save-fg); font-weight: 600; }
+    #cfg-clear { background: var(--btn); color: var(--title); }
+    .themes {
+      display: flex;
+      gap: 8px;
+    }
+    .theme-dot {
+      appearance: none;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      height: 32px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      padding: 0 10px;
+      cursor: pointer;
+      background: var(--btn);
+      color: var(--text);
+      font: 12px/1 inherit;
+    }
+    .theme-dot::before {
+      content: "";
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--swatch);
+      border: 1px solid var(--line);
+    }
+    .theme-dot[data-theme="black"] { --swatch: #1c1c1e; }
+    .theme-dot[data-theme="white"] { --swatch: #f5f5f7; }
+    .theme-dot.on { border-color: var(--accent); color: var(--accent); }
     #cfg-note { margin-top: 8px; font-size: 11px; color: var(--muted); min-height: 1.2em; }
     #current {
       padding: 10px 10px 8px;
@@ -143,31 +241,31 @@
       gap: 4px 10px;
       padding: 12px 14px;
       border-radius: 10px;
-      background: #1c1f26;
+      background: var(--card);
       position: relative;
     }
     .qa-card.current {
-      background: #23262f;
-      border-left: 3px solid #ffcc4d;
+      background: var(--card-current);
+      border-left: 3px solid var(--accent);
     }
     .qa-card:not(.current) { opacity: 0.7; }
-    .qa-card.draft .a-text { color: #cbd5e1; }
+    .qa-card.draft .a-text { color: var(--draft); }
     .q-label, .a-label {
       font-weight: 700;
       font-size: 13px;
       padding-top: 2px;
     }
-    .q-label { color: #ffcc4d; }
-    .a-label { color: #4ade80; }
+    .q-label { color: var(--accent); }
+    .a-label { color: var(--ok); }
     .q-text {
-      color: #e5e7eb;
+      color: var(--text);
       font-size: 14px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      border-bottom: 1px solid var(--hairline);
       padding-bottom: 8px;
       margin-bottom: 8px;
     }
     .a-text {
-      color: #f1f5f9;
+      color: var(--text);
       font-size: 17px;
       line-height: 1.5;
     }
@@ -178,8 +276,8 @@
       font-size: 10px;
       font-weight: 600;
       letter-spacing: 0.02em;
-      color: #cbd5e1;
-      background: rgba(255, 255, 255, 0.08);
+      color: var(--muted);
+      background: var(--chip);
       border-radius: 999px;
       padding: 2px 7px;
     }
@@ -225,7 +323,7 @@
       font: inherit;
       padding: 0;
     }
-    #tx-toggle:hover { color: #94a3b8; }
+    #tx-toggle:hover { color: var(--text); }
     #tx-last {
       min-width: 0;
       overflow: hidden;
@@ -245,7 +343,7 @@
     }
     #transcript.open { display: block; }
     #transcript .t { opacity: 0.75; }
-    #transcript .t.ext { color: #7dd3fc; opacity: 0.85; }
+    #transcript .t.ext { color: var(--ext); opacity: 0.85; }
     footer {
       padding: 4px 12px 7px;
       color: var(--muted);
@@ -260,6 +358,7 @@
       <header>
         <strong>conversation-copilot</strong>
         <div class="hdr-actions">
+          <button id="sum-btn" class="icon-btn" type="button" title="Summarize">Summary</button>
           <button id="cfg-toggle" class="icon-btn" type="button" title="Settings">⚙</button>
           <button id="quit-btn" class="icon-btn" type="button" title="Quit">Close</button>
           <span id="dot"></span>
@@ -270,12 +369,26 @@
         <input id="cfg-llm" name="llm_model" type="text" spellcheck="false" />
         <label for="cfg-whisper">WHISPER_MODEL</label>
         <select id="cfg-whisper" name="whisper_model"></select>
+        <label for="cfg-prompt">Prompt</label>
+        <textarea id="cfg-prompt" name="prompt" spellcheck="true"></textarea>
+        <label>Theme</label>
+        <div id="cfg-themes" class="themes" role="group" aria-label="Theme color">
+          <button type="button" class="theme-dot" data-theme="black">Mac black</button>
+          <button type="button" class="theme-dot" data-theme="white">Mac white</button>
+        </div>
         <div class="row">
           <button id="cfg-save" type="submit">Save</button>
           <button id="cfg-clear" type="button">Clear all</button>
         </div>
         <div id="cfg-note"></div>
       </form>
+      <div id="summary">
+        <div class="sum-hd">
+          <span>Summary</span>
+          <button id="sum-hide" class="icon-btn" type="button" title="Hide">×</button>
+        </div>
+        <div id="sum-text"></div>
+      </div>
       <div id="current"></div>
       <div id="history"></div>
       <div id="tx-bar">
@@ -301,7 +414,18 @@
     const cfgWhisper = document.getElementById("cfg-whisper");
     const cfgNote = document.getElementById("cfg-note");
     const cfgClear = document.getElementById("cfg-clear");
+    const cfgPrompt = document.getElementById("cfg-prompt");
+    const cfgThemes = document.getElementById("cfg-themes");
+    const sumBtn = document.getElementById("sum-btn");
+    const sumHide = document.getElementById("sum-hide");
+    const summaryBox = document.getElementById("summary");
+    const sumText = document.getElementById("sum-text");
     let current = null;
+    let whisperDirty = false;
+    const seenEv = new Set();
+    let lastTx = "";
+    let socket = null;
+    let socketTimer = 0;
     const cards = new Map();
     const deletedAt = new Map();
 
@@ -327,6 +451,22 @@
     });
     cfgClear.addEventListener("click", () => {
       clearAllCards(true);
+    });
+    sumBtn.addEventListener("click", () => startSummary());
+    sumHide.addEventListener("click", () => summaryBox.classList.remove("open"));
+    cfgWhisper.addEventListener("change", () => {
+      whisperDirty = true;
+      saveConfig().finally(() => { whisperDirty = false; });
+    });
+    cfgThemes.addEventListener("click", (e) => {
+      const btn = e.target.closest(".theme-dot");
+      if (!btn) return;
+      applyTheme(btn.dataset.theme, true);
+      fetch("/api/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ theme: btn.dataset.theme }),
+      }).catch(() => {});
     });
 
     function esc(s) {
@@ -461,21 +601,59 @@
         }).catch(() => {});
       }
     }
-    function fillConfig(cfg) {
+    function showSummary(text, pending) {
+      summaryBox.classList.add("open");
+      sumText.classList.toggle("pending", !!pending);
+      sumText.textContent = text || "";
+    }
+    async function startSummary() {
+      sumBtn.disabled = true;
+      showSummary("Starting summary…", true);
+      try {
+        const res = await fetch("/api/summary", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: "{}",
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          showSummary(body.error || "Summary failed", false);
+          sumBtn.disabled = false;
+        }
+      } catch (e) {
+        showSummary("Summary failed", false);
+        sumBtn.disabled = false;
+      }
+    }
+    function applyTheme(name, persist) {
+      const raw = String(name || "black").toLowerCase();
+      const theme = raw === "white" || raw === "light" || raw === "mac-white" ? "white" : "black";
+      document.documentElement.dataset.theme = theme;
+      cfgThemes.querySelectorAll(".theme-dot").forEach((btn) => {
+        btn.classList.toggle("on", btn.dataset.theme === theme);
+      });
+      if (persist) {
+        try { localStorage.setItem("overlay-theme", theme); } catch (e) {}
+      }
+    }
+    function fillConfig(cfg, preferServerTheme) {
       if (!cfg) return;
+      if (cfg.theme && preferServerTheme) applyTheme(cfg.theme, true);
       if (cfg.llm_model) cfgLlm.value = cfg.llm_model;
       const opts = cfg.whisper_options || [];
       if (opts.length && cfgWhisper.options.length !== opts.length) {
         cfgWhisper.innerHTML = opts.map((m) => `<option value="${esc(m)}">${esc(m)}</option>`).join("");
       }
-      if (cfg.whisper_model) cfgWhisper.value = cfg.whisper_model;
+      if (cfg.whisper_model && !whisperDirty) cfgWhisper.value = cfg.whisper_model;
+      if (cfg.prompt != null) cfgPrompt.value = cfg.prompt;
       cfgWhisper.disabled = !!cfg.whisper_loading;
       if (cfg.whisper_loading) cfgNote.textContent = "Loading Whisper " + cfg.whisper_model + "…";
     }
     async function loadConfig() {
       try {
         const res = await fetch("/api/config");
-        fillConfig(await res.json());
+        const cfg = await res.json();
+        fillConfig(cfg, !localStorage.getItem("overlay-theme"));
       } catch (e) {
         cfgNote.textContent = "Could not load settings";
       }
@@ -489,6 +667,8 @@
           body: JSON.stringify({
             llm_model: cfgLlm.value.trim(),
             whisper_model: cfgWhisper.value,
+            theme: document.documentElement.dataset.theme || "black",
+            prompt: cfgPrompt.value,
           }),
         });
         const cfg = await res.json();
@@ -496,7 +676,7 @@
           cfgNote.textContent = cfg.error || "Save failed";
           return;
         }
-        fillConfig(cfg);
+        fillConfig(cfg, true);
         cfgNote.textContent = cfg.whisper_loading
           ? "Saved. Loading Whisper " + cfg.whisper_model + "…"
           : "Saved";
@@ -511,7 +691,19 @@
       removeCard(cardFromEl(btn.closest(".qa-card")), true);
     });
     function onEvent(ev) {
+      if (ev.t != null && ev.type !== "summary") {
+        const id = `${ev.t}:${ev.type}:${ev.label || ""}:${ev.text || ev.question || ""}`;
+        if (seenEv.has(id)) return;
+        seenEv.add(id);
+        if (seenEv.size > 400) {
+          const drop = [...seenEv].slice(0, 200);
+          for (const key of drop) seenEv.delete(key);
+        }
+      }
       if (ev.type === "transcript") {
+        const line = `${ev.ts}|${ev.label}|${ev.text || ""}`;
+        if (line === lastTx) return;
+        lastTx = line;
         const row = document.createElement("div");
         const ext = String(ev.label || "").startsWith("EXT");
         row.className = "t" + (ext ? " ext" : "");
@@ -556,6 +748,9 @@
             badge.textContent = text;
           }
         }
+      } else if (ev.type === "summary") {
+        showSummary(ev.text || "", !ev.done);
+        if (ev.done) sumBtn.disabled = false;
       } else if (ev.type === "status") {
         if (!lat.textContent) lat.textContent = ev.text || "";
         if (settings.classList.contains("open") && ev.text) cfgNote.textContent = ev.text;
@@ -573,15 +768,25 @@
     }
 
     function connect() {
+      if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
+        return;
+      }
       const proto = location.protocol === "https:" ? "wss" : "ws";
       const ws = new WebSocket(proto + "://" + location.host + "/ws");
+      socket = ws;
       ws.onopen = () => { dot.classList.add("on"); };
-      ws.onclose = () => { dot.classList.remove("on"); setTimeout(connect, 800); };
+      ws.onclose = () => {
+        if (socket === ws) socket = null;
+        dot.classList.remove("on");
+        clearTimeout(socketTimer);
+        socketTimer = setTimeout(connect, 800);
+      };
       ws.onerror = () => ws.close();
       ws.onmessage = (m) => {
         try { onEvent(JSON.parse(m.data)); } catch (e) {}
       };
     }
+    applyTheme(localStorage.getItem("overlay-theme") || "black", false);
     loadConfig();
     connect();
   </script>

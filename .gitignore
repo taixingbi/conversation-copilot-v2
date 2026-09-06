@@ -2,6 +2,7 @@
 .env copy
 .env.*
 !.env.example
+qa_prompt.txt
 
 venv/
 .venv/

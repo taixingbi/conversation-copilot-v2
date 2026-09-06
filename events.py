@@ -32,6 +32,9 @@ class EventBus:
                         if not (e.get("type") == "qa" and _norm_q(e.get("question") or "") == nq)
                     ]
                     self._recent = deque(kept, maxlen=self._keep)
+            elif typ == "summary":
+                kept = [e for e in self._recent if e.get("type") != "summary"]
+                self._recent = deque(kept, maxlen=self._keep)
             self._recent.append(ev)
             subs = list(self._subs)
         for q in subs:

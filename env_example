@@ -33,9 +33,13 @@ LLM_MODEL=qwen3-next-80b-a3b
 # Optional small/fast model for a one-sentence draft (<1s). Empty = same as LLM_MODEL.
 # LLM_FAST_MODEL=qwen2.5-7b-instruct
 
-# Overlay UI. Electron uses setContentProtection (hidden in Zoom share / recording).
+# Extra / override QA prompt (also editable in the overlay settings).
+# Saved next to .env as qa_prompt.txt when you use the UI.
+# QA_PROMPT=
 OVERLAY=1
 OVERLAY_PORT=8765
+# Panel color: black | white  (Mac black / Mac white)
+# OVERLAY_THEME=black
 # Dev window:  npm start
 # Pack app:    npm run backend && npm run dist   → dist/mac-arm64/conversation-copilot.app
 

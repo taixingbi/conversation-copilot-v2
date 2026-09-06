@@ -164,12 +164,24 @@ class OverlayServer:
                     return
                 if path == "/api/config":
                     try:
-                        llm = body.get("llm_model")
-                        whisper = body.get("whisper_model")
-                        snap = runtime.apply(
-                            llm_model=llm if llm is not None else None,
-                            whisper_model=whisper if whisper else None,
-                        )
+                        kwargs = {}
+                        if "llm_model" in body:
+                            kwargs["llm_model"] = body.get("llm_model")
+                        if body.get("whisper_model"):
+                            kwargs["whisper_model"] = body.get("whisper_model")
+                        if body.get("theme"):
+                            kwargs["theme"] = body.get("theme")
+                        if "prompt" in body:
+                            kwargs["prompt"] = body.get("prompt") or ""
+                        snap = runtime.apply(**kwargs)
+                    except ValueError as exc:
+                        self._json({"error": str(exc)}, 400)
+                        return
+                    self._json(snap)
+                    return
+                if path == "/api/summary":
+                    try:
+                        snap = runtime.start_summary()
                     except ValueError as exc:
                         self._json({"error": str(exc)}, 400)
                         return

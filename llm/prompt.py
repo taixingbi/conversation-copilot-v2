@@ -1,8 +1,18 @@
 from __future__ import annotations
 
 import json
+import os
+import re
 import sys
 from pathlib import Path
+
+_LINE = re.compile(r"^(?:\[[^\]]+\]\s*){0,2}(.*)$")
+_JUNK = re.compile(
+    r"^(hi|hello|hey|ok|okay|yeah|yes|yep|no|nah|um+|uh+|ah+|hmm+|thanks|thank you|"
+    r"bye|good|nice|cool|right|sure|please)[?.!]*$",
+    re.I,
+)
+_NORM = re.compile(r"[^a-z0-9\u4e00-\u9fff]+")
 
 
 def _prompt_path() -> Path:
@@ -27,9 +37,25 @@ def _focus_for(ext_lines: list[str], data: dict) -> str:
     return data["keywords"][max(keys, key=len)] if keys else data["default"]
 
 
+def default_base() -> str:
+    return str(_load().get("base") or "")
+
+
+def user_prompt() -> str:
+    return (os.environ.get("QA_PROMPT") or "").strip()
+
+
+def effective_prompt() -> str:
+    return user_prompt() or default_base()
+
+
 def _instructions_for(ext_lines: list[str], *, kind: str = "base") -> str:
     data = _load()
-    template = data.get(kind) or data["base"]
+    override = user_prompt()
+    if override and kind in {"base", "brief", "detailed"}:
+        template = override
+    else:
+        template = data.get(kind) or data["base"]
     return _build(template, _focus_for(ext_lines, data))
 
 
@@ -47,6 +73,83 @@ def qa_prompt(
     if history.strip():
         extra += f"\nRecent Q&A (keep follow-ups consistent):\n{history.strip()}\n"
     return f"{_instructions_for(ext_lines, kind=kind)}{extra}\n\nInterviewer lines:\n{lines or '(none)'}\n"
+
+
+def _norm_line(text: str) -> str:
+    return _NORM.sub(" ", (text or "").lower()).strip()
+
+
+def _body(line: str) -> str:
+    m = _LINE.match((line or "").strip())
+    return (m.group(1) if m else line).strip()
+
+
+def compact_transcript(raw: str) -> str:
+    """Drop greetings/repeats so the summary model sees topics, not ASR noise."""
+    kept: list[str] = []
+    last = ""
+    for raw_line in (raw or "").splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        body = _body(line)
+        norm = _norm_line(body)
+        if not norm or _JUNK.match(norm) or len(norm) < 8:
+            continue
+        if last and (norm == last or norm in last or last in norm):
+            if len(norm) > len(last):
+                kept[-1] = line
+                last = norm
+            continue
+        kept.append(line)
+        last = norm
+    return "\n".join(kept)
+
+
+def compact_qa(raw: str) -> str:
+    blocks: list[str] = []
+    seen: set[str] = set()
+    buf: list[str] = []
+    for line in (raw or "").splitlines():
+        if not line.strip():
+            if buf:
+                block = "\n".join(buf).strip()
+                key = _norm_line(block)
+                if key and key not in seen:
+                    seen.add(key)
+                    blocks.append(block)
+                buf = []
+            continue
+        buf.append(line.rstrip())
+    if buf:
+        block = "\n".join(buf).strip()
+        key = _norm_line(block)
+        if key and key not in seen:
+            blocks.append(block)
+    return "\n\n".join(blocks)
+
+
+def summary_prompt(*, qa: str = "", transcript: str = "") -> str:
+    qa = compact_qa(qa) or "(none)"
+    transcript = compact_transcript(transcript) or "(none)"
+    return (
+        "You write a useful recap for a candidate in a live conversation.\n"
+        "The transcript is noisy ASR. People repeat. Greetings and fragments are junk.\n\n"
+        "Rules:\n"
+        "- Reconstruct the real topics. Do not list every line.\n"
+        "- Never write 'user said X multiple times' or count repeats.\n"
+        "- Ignore hellos, filler, one-word noise, and unclear scraps.\n"
+        "- If the same question was repeated, mention it once.\n"
+        "- Prefer interviewer lines (EXT / EXT-*) over the candidate repeating (MIC).\n"
+        "- Write at most 8 short bullets:\n"
+        "  • Question asked (the real question, in clear English)\n"
+        "  • Answer given, if any\n"
+        "  • What is still open\n"
+        "- If there was no real question, say that in ONE short line. Do not narrate the junk.\n"
+        "- Simple words. No preamble. No heading.\n\n"
+        f"Q&A (may be empty):\n{qa}\n\n"
+        f"Transcript (cleaned):\n{transcript}\n"
+    )
 
 
 def gate_prompt(ext_lines: list[str]) -> str:
