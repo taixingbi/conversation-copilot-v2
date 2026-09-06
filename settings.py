@@ -100,28 +100,50 @@ class Runtime:
         self.worker = None
         self._lock = threading.Lock()
         self._whisper_gen = 0
+        self._summary_gen = 0
         self.whisper_loading = False
         self._load_prompt()
 
     def prompt_path(self) -> Path:
         return self.env_path.parent / "qa_prompt.txt"
 
+    def summary_prompt_path(self) -> Path:
+        return self.env_path.parent / "summary_prompt.txt"
+
     def _load_prompt(self) -> None:
         path = self.prompt_path()
         if path.is_file():
             os.environ["QA_PROMPT"] = path.read_text(encoding="utf-8").strip()
+        sp = self.summary_prompt_path()
+        if sp.is_file():
+            os.environ["SUMMARY_PROMPT"] = sp.read_text(encoding="utf-8").strip()
+
+    def _write_prompt_file(self, path: Path, text: str) -> None:
+        if text:
+            path.write_text(text + "\n", encoding="utf-8")
+        elif path.is_file():
+            path.unlink()
 
     def snapshot(self) -> dict:
-        from llm.prompt import effective_prompt
+        from llm.prompt import effective_prompt, effective_summary_prompt
 
+        llm = (os.environ.get("LLM_MODEL") or "qwen3-next-80b-a3b").strip()
+        try:
+            confidence = float(os.environ.get("RECOGNITION_CONFIDENCE") or "0.70")
+        except ValueError:
+            confidence = 0.70
         return {
-            "llm_model": (os.environ.get("LLM_MODEL") or "qwen3-next-80b-a3b").strip(),
+            "llm_model": llm,
+            "summary_model": (os.environ.get("SUMMARY_MODEL") or llm).strip(),
             "whisper_model": whisper_key(),
             "whisper_options": list(WHISPER_OPTIONS),
             "whisper_loading": self.whisper_loading,
             "theme": theme_key(),
             "theme_options": list(THEME_OPTIONS),
             "prompt": effective_prompt(),
+            "summary_prompt": effective_summary_prompt(),
+            "recognition_confidence": min(0.99, max(0.0, confidence)),
+            "qa_enabled": bool(self.extractor.auto_qa) if self.extractor is not None else False,
         }
 
     def apply(
@@ -131,12 +153,15 @@ class Runtime:
         whisper_model: str | None = None,
         theme: str | None = None,
         prompt: str | None = None,
+        summary_model: str | None = None,
+        summary_prompt: str | None = None,
+        recognition_confidence: float | None = None,
     ) -> dict:
         updates: dict[str, str] = {}
         if llm_model is not None:
             model = llm_model.strip()
             if not model or "\n" in model:
-                raise ValueError("LLM_MODEL is empty")
+                raise ValueError("Model is empty")
             updates["LLM_MODEL"] = model
             os.environ["LLM_MODEL"] = model
             if self.extractor is not None:
@@ -158,11 +183,27 @@ class Runtime:
             if len(text) > 8000:
                 raise ValueError("Prompt is too long")
             os.environ["QA_PROMPT"] = text
-            path = self.prompt_path()
-            if text:
-                path.write_text(text + "\n", encoding="utf-8")
-            elif path.is_file():
-                path.unlink()
+            self._write_prompt_file(self.prompt_path(), text)
+        if summary_model is not None:
+            model = summary_model.strip()
+            if not model or "\n" in model:
+                raise ValueError("Summary model is empty")
+            updates["SUMMARY_MODEL"] = model
+            os.environ["SUMMARY_MODEL"] = model
+        if summary_prompt is not None:
+            text = str(summary_prompt).replace("\0", "").strip()
+            if len(text) > 8000:
+                raise ValueError("Summary prompt is too long")
+            os.environ["SUMMARY_PROMPT"] = text
+            self._write_prompt_file(self.summary_prompt_path(), text)
+        if recognition_confidence is not None:
+            try:
+                value = float(recognition_confidence)
+            except (TypeError, ValueError) as exc:
+                raise ValueError("Recognition confidence must be a number") from exc
+            value = min(0.99, max(0.0, value))
+            updates["RECOGNITION_CONFIDENCE"] = f"{value:.2f}"
+            os.environ["RECOGNITION_CONFIDENCE"] = updates["RECOGNITION_CONFIDENCE"]
         if updates:
             upsert_env(self.env_path, updates)
         snap = self.snapshot()
@@ -185,12 +226,31 @@ class Runtime:
         BUS.drop_qa(None)
         BUS.publish("qa_gone", question="")
 
+    def clear_summary(self) -> None:
+        with self._lock:
+            self._summary_gen += 1
+        BUS.drop_summary()
+        BUS.publish("summary_gone")
+
+    def set_qa_enabled(self, enabled: bool) -> dict:
+        if self.extractor is None:
+            raise ValueError("runtime unavailable")
+        self.extractor.set_auto(bool(enabled))
+        if enabled and self.extractor.llm.enabled:
+            self.extractor.trigger()
+        snap = self.snapshot()
+        BUS.publish("config", **snap)
+        return snap
+
     def start_summary(self) -> dict:
         if self.extractor is None or not getattr(self.extractor, "llm", None):
             raise ValueError("runtime unavailable")
         if not self.extractor.llm.enabled:
             raise ValueError("LLM is not configured")
-        threading.Thread(target=self._run_summary, daemon=True, name="summary").start()
+        with self._lock:
+            self._summary_gen += 1
+            gen = self._summary_gen
+        threading.Thread(target=self._run_summary, args=(gen,), daemon=True, name="summary").start()
         BUS.publish("summary", text="Starting summary…", done=False)
         return {"ok": True}
 
@@ -229,25 +289,32 @@ class Runtime:
             qa = self.extractor.memory.block()
         return qa.strip(), transcript.strip()
 
-    def _run_summary(self) -> None:
+    def _run_summary(self, gen: int) -> None:
         from llm.client import strip_think
         from llm.prompt import summary_prompt
 
+        if gen != self._summary_gen:
+            return
         qa, transcript = self._session_context()
         from llm.prompt import compact_qa, compact_transcript
 
         qa = compact_qa(qa)
         transcript = compact_transcript(transcript)
         if not qa and not transcript:
-            BUS.publish("summary", text="Nothing to summarize yet.", done=True)
+            if gen == self._summary_gen:
+                BUS.publish("summary", text="Nothing to summarize yet.", done=True)
             return
         try:
             buf = ""
             last = 0.0
+            model = (os.environ.get("SUMMARY_MODEL") or "").strip() or None
             for delta in self.extractor.llm.client.chat_stream(
                 summary_prompt(qa=qa, transcript=transcript),
                 max_tokens=900,
+                model=model,
             ):
+                if gen != self._summary_gen:
+                    return
                 if not delta:
                     continue
                 buf += delta
@@ -255,10 +322,13 @@ class Runtime:
                 if now - last >= 0.12:
                     last = now
                     BUS.publish("summary", text=strip_think(buf), done=False)
+            if gen != self._summary_gen:
+                return
             text = strip_think(buf).strip() or "Summary was empty."
             BUS.publish("summary", text=text, done=True)
         except Exception as exc:
-            BUS.publish("summary", text=f"Summary failed: {exc}", done=True)
+            if gen == self._summary_gen:
+                BUS.publish("summary", text=f"Summary failed: {exc}", done=True)
 
     def _reload_whisper(self, key: str) -> None:
         if self.worker is None:

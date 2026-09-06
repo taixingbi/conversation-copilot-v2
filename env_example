@@ -36,9 +36,12 @@ LLM_MODEL=qwen3-next-80b-a3b
 # Extra / override QA prompt (also editable in the overlay settings).
 # Saved next to .env as qa_prompt.txt when you use the UI.
 # QA_PROMPT=
+# SUMMARY_MODEL=
+# SUMMARY_PROMPT=
+# RECOGNITION_CONFIDENCE=0.70
 OVERLAY=1
 OVERLAY_PORT=8765
-# Panel color: black | white  (Mac black / Mac white)
+# Panel color: black | white  (Mac black / Light)
 # OVERLAY_THEME=black
 # Dev window:  npm start
 # Pack app:    npm run backend && npm run dist   → dist/mac-arm64/conversation-copilot.app

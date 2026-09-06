@@ -220,6 +220,12 @@ class QuestionExtractor:
         self._wrote = False
         self._q_printed = False
         self._logged_ext = False
+        self.auto_qa = False
+
+    def set_auto(self, on: bool) -> None:
+        self.auto_qa = bool(on)
+        if not self.auto_qa:
+            self._interrupt()
 
     def start(self) -> None:
         self.out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -229,7 +235,8 @@ class QuestionExtractor:
 
     def close(self) -> None:
         self._stop.set()
-        self.flush(force=True)
+        if self.auto_qa:
+            self.flush(force=True)
         deadline = time.time() + 3
         while (self._fast_alive or self._final_alive) and time.time() < deadline:
             time.sleep(0.05)
@@ -261,6 +268,8 @@ class QuestionExtractor:
             if stt_ms:
                 self._last_stt_ms = stt_ms
             window = list(self._history)
+        if not self.auto_qa:
+            return
         gate = heuristic_gate(window)
         if gate == "yes":
             try:
@@ -287,6 +296,46 @@ class QuestionExtractor:
         except Exception:
             return
         self._kick("final", window)
+
+    def trigger(self) -> bool:
+        """Run Q&A once from the current EXT window. Does nothing until clicked."""
+        with self._lock:
+            window = [t for t in self._history if str(t).strip()]
+        if not window:
+            self._seed_from_bus()
+            with self._lock:
+                window = [t for t in self._history if str(t).strip()]
+        if not window:
+            BUS.publish("status", text="No question yet")
+            return False
+        window = ext_window(window)
+        with self._lock:
+            self._consume_pending(list(self._pending))
+            self._last_call = time.time()
+        self._kick("final", window, force=True)
+        return True
+
+    def _seed_from_bus(self) -> None:
+        lines: list[str] = []
+        for ev in BUS.snapshot():
+            if ev.get("type") != "transcript":
+                continue
+            text = str(ev.get("text") or "").strip()
+            if not text:
+                continue
+            label = str(ev.get("label") or "")
+            if label.startswith("EXT") or is_sure_question(text):
+                lines.append(text)
+        if not lines:
+            return
+        ts = time.strftime("%H:%M:%S")
+        with self._lock:
+            for text in lines[-EXT_WINDOW:]:
+                if self._history and _norm_blob(self._history[-1]) == _norm_blob(text):
+                    continue
+                self._history.append(text)
+                self._pending.append(f"[{ts}] {text}")
+            self._last_ext = time.time()
 
     def set_model(self, model: str) -> None:
         fast = (os.environ.get("LLM_FAST_MODEL") or "").strip()
@@ -349,14 +398,16 @@ class QuestionExtractor:
     def _blob(self, window: list[str]) -> str:
         return _norm_blob(" ".join(window))
 
-    def _kick(self, kind: str, window: list[str]) -> None:
+    def _kick(self, kind: str, window: list[str], *, force: bool = False) -> None:
         if not self.llm.enabled:
             return
         blob = self._blob(window)
         if not blob:
             return
-        if self._already_answered(blob, window):
+        if not force and self._already_answered(blob, window):
             return
+        if force:
+            self._interrupt()
         current = self._final_blob or self._draft_blob
         if current and not is_related(current, blob):
             self._interrupt()
@@ -607,6 +658,8 @@ class QuestionExtractor:
 
     def _loop(self) -> None:
         while not self._stop.wait(0.12):
+            if not self.auto_qa:
+                continue
             try:
                 self.flush()
             except Exception as exc:

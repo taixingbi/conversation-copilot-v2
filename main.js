@@ -111,6 +111,11 @@ function createWindow(url) {
     }
   });
   win.loadURL(url);
+  const sendFs = () => {
+    if (!win.isDestroyed()) win.webContents.send("copilot-fullscreen", win.isFullScreen());
+  };
+  win.on("enter-full-screen", sendFs);
+  win.on("leave-full-screen", sendFs);
 }
 
 app.whenReady().then(async () => {
@@ -138,7 +143,41 @@ app.whenReady().then(async () => {
   console.log("window open — look at the top-right of the screen (no dock icon)");
 });
 
+let sidebarBounds = null;
+
+ipcMain.on("copilot-sidebar", (e, on) => {
+  const win = BrowserWindow.fromWebContents(e.sender);
+  if (!win || win.isDestroyed() || win.isFullScreen()) return;
+  const extra = 280;
+  if (on) {
+    const cur = win.getBounds();
+    if (!sidebarBounds) sidebarBounds = { ...cur };
+    const area = screen.getPrimaryDisplay().workArea;
+    const width = Math.min(sidebarBounds.width + extra, area.width);
+    const x = Math.max(area.x, sidebarBounds.x + sidebarBounds.width - width);
+    win.setBounds({ x, y: sidebarBounds.y, width, height: sidebarBounds.height });
+    return;
+  }
+  if (sidebarBounds) {
+    win.setBounds(sidebarBounds);
+    sidebarBounds = null;
+  }
+});
+
 ipcMain.on("copilot-quit", () => app.quit());
+ipcMain.on("copilot-minimize", (e) => {
+  const win = BrowserWindow.fromWebContents(e.sender);
+  win?.minimize();
+});
+ipcMain.on("copilot-fullscreen", (e) => {
+  const win = BrowserWindow.fromWebContents(e.sender);
+  if (!win) return;
+  win.setFullScreen(!win.isFullScreen());
+});
+ipcMain.handle("copilot-fullscreen-state", (e) => {
+  const win = BrowserWindow.fromWebContents(e.sender);
+  return !!win?.isFullScreen();
+});
 app.on("before-quit", () => {
   if (backend && !backend.killed) backend.kill();
 });

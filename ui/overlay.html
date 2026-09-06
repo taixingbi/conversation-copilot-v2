@@ -74,6 +74,21 @@
       flex-direction: column;
       min-height: 0;
       flex: 1;
+      overflow: hidden;
+    }
+    .body {
+      position: relative;
+      display: flex;
+      flex-direction: row;
+      min-height: 0;
+      flex: 1;
+    }
+    .main {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      min-height: 0;
+      flex: 1;
     }
     header {
       display: flex;
@@ -82,6 +97,12 @@
       padding: 10px 12px 8px;
       border-bottom: 1px solid var(--line);
       -webkit-app-region: drag;
+    }
+    .hdr-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
     }
     header strong {
       font-size: 12px;
@@ -108,61 +129,185 @@
       padding: 0;
     }
     .icon-btn:hover, .icon-btn.on { color: var(--text); background: rgba(255, 255, 255, 0.12); }
-    #quit-btn {
-      width: auto;
-      padding: 0 8px;
-      font-size: 11px;
-      font-weight: 600;
+    .win-btns {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      -webkit-app-region: no-drag;
+    }
+    #win-min, #win-fs, #win-close {
+      font-size: 13px;
+      line-height: 1;
+    }
+    #win-close {
       color: #fecaca;
       background: rgba(248, 113, 113, 0.22);
       border-color: rgba(248, 113, 113, 0.4);
     }
-    #quit-btn:hover { color: #fff; background: rgba(248, 113, 113, 0.4); }
-    #sum-btn { width: auto; padding: 0 8px; font-size: 11px; font-weight: 600; }
-    #summary {
-      display: none;
-      padding: 10px 12px 12px;
-      border-bottom: 1px solid var(--line);
-      -webkit-app-region: no-drag;
+    #win-close:hover { color: #fff; background: rgba(248, 113, 113, 0.4); }
+    html.is-fullscreen .wrap { padding: 0; }
+    html.is-fullscreen .panel { border-radius: 0; }
+    #qa-btn, #sum-toggle { width: auto; padding: 0 8px; font-size: 11px; font-weight: 600; }
+    #qa-btn {
+      color: #8e8e93;
+      background: rgba(142, 142, 147, 0.22);
+      border-color: rgba(142, 142, 147, 0.35);
     }
-    #summary.open { display: block; }
-    #summary .sum-hd {
+    #qa-btn:hover { color: #d1d1d6; background: rgba(142, 142, 147, 0.32); }
+    #qa-btn.on {
+      color: #fff;
+      background: var(--ok);
+      border-color: var(--ok);
+    }
+    #qa-btn.on:hover { color: #fff; background: #24b84b; }
+    #sum-btn {
+      appearance: none;
+      border: 0;
+      border-radius: 8px;
+      padding: 7px 12px;
+      font: 12px/1 inherit;
+      font-weight: 600;
+      cursor: pointer;
+      background: var(--accent);
+      color: var(--save-fg);
+      width: 100%;
+    }
+    #sum-btn:disabled { opacity: 0.6; cursor: default; }
+    #summary {
       display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 6px;
-      font-size: 10px;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-      color: var(--label);
+      flex-direction: column;
+      position: relative;
+      z-index: 5;
+      width: 0;
+      min-width: 0;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: var(--bg);
+      border-left: 0;
+      box-shadow: none;
+      -webkit-app-region: no-drag;
+      flex: 0 0 auto;
+      pointer-events: none;
+      transition: width 0.2s ease;
+    }
+    #summary.open {
+      width: min(280px, 46%);
+      border-left: 1px solid var(--line);
+      pointer-events: auto;
+    }
+    #summary .cfg-hd,
+    #summary #sum-text,
+    #summary .cfg-foot {
+      min-width: 240px;
     }
     #sum-text {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 10px 12px;
       color: var(--text);
       font-size: 13px;
       line-height: 1.45;
       white-space: pre-wrap;
     }
+    #sum-text:empty::before {
+      content: "No summary yet";
+      color: var(--muted);
+    }
     #sum-text.pending { color: var(--muted); }
     #dot { width: 8px; height: 8px; border-radius: 50%; background: #f87171; }
     #dot.on { background: #4ade80; }
-    #settings {
+    .cfg-backdrop {
       display: none;
-      padding: 10px 12px 12px;
-      border-bottom: 1px solid var(--line);
+      position: absolute;
+      inset: 0;
+      z-index: 15;
+      background: rgba(0, 0, 0, 0.28);
       -webkit-app-region: no-drag;
     }
-    #settings.open { display: block; }
-    #settings label {
-      display: block;
-      font-size: 10px;
+    [data-theme="white"] .cfg-backdrop { background: rgba(0, 0, 0, 0.16); }
+    .panel.cfg-open .cfg-backdrop { display: block; }
+    #settings {
+      display: flex;
+      flex-direction: column;
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: min(300px, 88%);
+      z-index: 20;
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      border-left: 1px solid var(--line);
+      box-shadow: -8px 0 24px rgba(0, 0, 0, 0.18);
+      -webkit-app-region: no-drag;
+      transform: translateX(100%);
+      transition: transform 0.22s ease;
+      pointer-events: none;
+    }
+    #settings.open {
+      transform: translateX(0);
+      pointer-events: auto;
+    }
+    .cfg-hd {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 10px 12px 8px;
+      border-bottom: 1px solid var(--line);
+    }
+    .cfg-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--title);
+    }
+    .cfg-scroll {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 4px 12px 10px;
+    }
+    .cfg-foot {
+      padding: 8px 12px 12px;
+      border-top: 1px solid var(--line);
+    }
+    .cfg-sec {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 0 10px 8px;
+      margin: 8px 0;
+    }
+    .cfg-sec summary {
+      cursor: pointer;
+      padding: 8px 0;
+      font-size: 11px;
+      font-weight: 600;
       letter-spacing: 0.04em;
       text-transform: uppercase;
+      color: var(--title);
+      list-style: none;
+    }
+    .cfg-sec summary::-webkit-details-marker { display: none; }
+    .cfg-sec summary::after {
+      content: "▸";
+      float: right;
+      color: var(--muted);
+    }
+    .cfg-sec[open] summary::after { content: "▾"; }
+    #settings label {
+      display: block;
+      font-size: 11px;
+      font-weight: 500;
       color: var(--label);
       margin: 8px 0 4px;
     }
-    #settings label:first-child { margin-top: 0; }
     #settings textarea {
-      min-height: 92px;
+      min-height: 72px;
       resize: vertical;
     }
     #settings input, #settings select, #settings textarea {
@@ -175,8 +320,20 @@
       padding: 7px 9px;
       font: 12px/1.4 inherit;
     }
+    #cfg-conf-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    #cfg-conf { flex: 1; padding: 0; }
+    #cfg-conf-val {
+      min-width: 2.6em;
+      font-variant-numeric: tabular-nums;
+      color: var(--text);
+    }
     #settings .row {
       display: flex;
+      justify-content: space-between;
       gap: 8px;
       margin-top: 10px;
     }
@@ -184,7 +341,7 @@
       appearance: none;
       border: 0;
       border-radius: 8px;
-      padding: 7px 10px;
+      padding: 7px 12px;
       font: 12px/1 inherit;
       cursor: pointer;
     }
@@ -356,47 +513,90 @@
   <div class="wrap">
     <section class="panel">
       <header>
-        <strong>conversation-copilot</strong>
+        <div class="hdr-left">
+          <div class="win-btns">
+            <button id="win-min" class="icon-btn" type="button" title="Minimize">─</button>
+            <button id="win-fs" class="icon-btn" type="button" title="Full Screen">⛶</button>
+            <button id="win-close" class="icon-btn" type="button" title="Close">×</button>
+          </div>
+        </div>
         <div class="hdr-actions">
-          <button id="sum-btn" class="icon-btn" type="button" title="Summarize">Summary</button>
+          <button id="qa-btn" class="icon-btn" type="button" title="Q&A off">QA</button>
+          <button id="sum-toggle" class="icon-btn" type="button" title="Summary">Summary</button>
           <button id="cfg-toggle" class="icon-btn" type="button" title="Settings">⚙</button>
-          <button id="quit-btn" class="icon-btn" type="button" title="Quit">Close</button>
           <span id="dot"></span>
         </div>
       </header>
-      <form id="settings" autocomplete="off">
-        <label for="cfg-llm">LLM_MODEL</label>
-        <input id="cfg-llm" name="llm_model" type="text" spellcheck="false" />
-        <label for="cfg-whisper">WHISPER_MODEL</label>
-        <select id="cfg-whisper" name="whisper_model"></select>
-        <label for="cfg-prompt">Prompt</label>
-        <textarea id="cfg-prompt" name="prompt" spellcheck="true"></textarea>
-        <label>Theme</label>
-        <div id="cfg-themes" class="themes" role="group" aria-label="Theme color">
-          <button type="button" class="theme-dot" data-theme="black">Mac black</button>
-          <button type="button" class="theme-dot" data-theme="white">Mac white</button>
+      <div class="body">
+        <div class="cfg-backdrop" id="cfg-backdrop"></div>
+        <form id="settings" autocomplete="off" inert>
+          <div class="cfg-hd">
+            <div class="cfg-title">Config</div>
+            <button id="cfg-close" class="icon-btn" type="button" title="Close">×</button>
+          </div>
+          <div class="cfg-scroll">
+            <details class="cfg-sec" open>
+              <summary>Appearance</summary>
+              <label>Theme</label>
+              <div id="cfg-themes" class="themes" role="group" aria-label="Theme">
+                <button type="button" class="theme-dot" data-theme="black">Mac Black</button>
+                <button type="button" class="theme-dot" data-theme="white">Light</button>
+              </div>
+            </details>
+            <details class="cfg-sec">
+              <summary>Q&amp;A</summary>
+              <label for="cfg-llm">Model</label>
+              <input id="cfg-llm" name="llm_model" type="text" spellcheck="false" />
+              <label for="cfg-prompt">Prompt</label>
+              <textarea id="cfg-prompt" name="prompt" spellcheck="true"></textarea>
+            </details>
+            <details class="cfg-sec">
+              <summary>Summary</summary>
+              <label for="cfg-sum-model">Model</label>
+              <input id="cfg-sum-model" name="summary_model" type="text" spellcheck="false" />
+              <label for="cfg-sum-prompt">Prompt</label>
+              <textarea id="cfg-sum-prompt" name="summary_prompt" spellcheck="true"></textarea>
+            </details>
+            <details class="cfg-sec">
+              <summary>Transcription</summary>
+              <label for="cfg-whisper">Whisper model</label>
+              <select id="cfg-whisper" name="whisper_model"></select>
+              <label for="cfg-conf">Recognition confidence</label>
+              <div id="cfg-conf-row">
+                <input id="cfg-conf" name="recognition_confidence" type="range" min="0.30" max="0.95" step="0.01" />
+                <span id="cfg-conf-val">0.70</span>
+              </div>
+            </details>
+          </div>
+          <div class="cfg-foot">
+            <div class="row">
+              <button id="cfg-clear" type="button">Clear all</button>
+              <button id="cfg-save" type="submit">Save</button>
+            </div>
+            <div id="cfg-note"></div>
+          </div>
+        </form>
+        <div class="main">
+          <div id="current"></div>
+          <div id="history"></div>
+          <div id="tx-bar">
+            <button id="tx-toggle" type="button">Transcript ▸</button>
+            <span id="tx-last"></span>
+          </div>
+          <div id="transcript"></div>
+          <footer id="lat"></footer>
         </div>
-        <div class="row">
-          <button id="cfg-save" type="submit">Save</button>
-          <button id="cfg-clear" type="button">Clear all</button>
-        </div>
-        <div id="cfg-note"></div>
-      </form>
-      <div id="summary">
-        <div class="sum-hd">
-          <span>Summary</span>
-          <button id="sum-hide" class="icon-btn" type="button" title="Hide">×</button>
-        </div>
-        <div id="sum-text"></div>
+        <aside id="summary" inert>
+          <div class="cfg-hd">
+            <div class="cfg-title">Summary</div>
+            <button id="sum-hide" class="icon-btn" type="button" title="Delete">×</button>
+          </div>
+          <div id="sum-text"></div>
+          <div class="cfg-foot">
+            <button id="sum-btn" type="button">Summarize</button>
+          </div>
+        </aside>
       </div>
-      <div id="current"></div>
-      <div id="history"></div>
-      <div id="tx-bar">
-        <button id="tx-toggle" type="button">Transcript ▸</button>
-        <span id="tx-last"></span>
-      </div>
-      <div id="transcript"></div>
-      <footer id="lat"></footer>
     </section>
   </div>
   <script>
@@ -407,15 +607,26 @@
     const txLast = document.getElementById("tx-last");
     const lat = document.getElementById("lat");
     const dot = document.getElementById("dot");
+    const panel = document.querySelector(".panel");
     const settings = document.getElementById("settings");
     const cfgToggle = document.getElementById("cfg-toggle");
-    const quitBtn = document.getElementById("quit-btn");
+    const cfgClose = document.getElementById("cfg-close");
+    const cfgBackdrop = document.getElementById("cfg-backdrop");
+    const winMin = document.getElementById("win-min");
+    const winFs = document.getElementById("win-fs");
+    const winClose = document.getElementById("win-close");
     const cfgLlm = document.getElementById("cfg-llm");
     const cfgWhisper = document.getElementById("cfg-whisper");
     const cfgNote = document.getElementById("cfg-note");
     const cfgClear = document.getElementById("cfg-clear");
     const cfgPrompt = document.getElementById("cfg-prompt");
+    const cfgSumModel = document.getElementById("cfg-sum-model");
+    const cfgSumPrompt = document.getElementById("cfg-sum-prompt");
+    const cfgConf = document.getElementById("cfg-conf");
+    const cfgConfVal = document.getElementById("cfg-conf-val");
     const cfgThemes = document.getElementById("cfg-themes");
+    const qaBtn = document.getElementById("qa-btn");
+    const sumToggle = document.getElementById("sum-toggle");
     const sumBtn = document.getElementById("sum-btn");
     const sumHide = document.getElementById("sum-hide");
     const summaryBox = document.getElementById("summary");
@@ -428,22 +639,89 @@
     let socketTimer = 0;
     const cards = new Map();
     const deletedAt = new Map();
+    let sumWanted = false;
+    let sumCleared = false;
 
     txToggle.addEventListener("click", () => {
       const open = transcript.classList.toggle("open");
       txToggle.textContent = open ? "Transcript ▾" : "Transcript ▸";
     });
-    cfgToggle.addEventListener("click", () => {
-      const open = settings.classList.toggle("open");
+    function setConfigOpen(open) {
+      settings.classList.toggle("open", open);
+      panel.classList.toggle("cfg-open", open);
       cfgToggle.classList.toggle("on", open);
-      if (open) loadConfig();
+      settings.inert = !open;
+      if (open) {
+        setSummaryOpen(false);
+        loadConfig();
+      }
+    }
+    function setSummaryOpen(open) {
+      summaryBox.classList.toggle("open", open);
+      panel.classList.toggle("sum-open", open);
+      sumToggle.classList.toggle("on", open);
+      summaryBox.inert = !open;
+      if (window.copilot && typeof window.copilot.sidebar === "function") {
+        window.copilot.sidebar(open);
+      }
+      if (open) {
+        sumWanted = true;
+        setConfigOpen(false);
+      } else {
+        sumWanted = false;
+      }
+    }
+    cfgToggle.addEventListener("click", () => {
+      setConfigOpen(!settings.classList.contains("open"));
     });
-    quitBtn.addEventListener("click", () => {
+    cfgClose.addEventListener("click", () => setConfigOpen(false));
+    cfgBackdrop.addEventListener("click", () => {
+      setConfigOpen(false);
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key !== "Escape") return;
+      setConfigOpen(false);
+      setSummaryOpen(false);
+    });
+    qaBtn.addEventListener("click", () => setQaEnabled(!qaBtn.classList.contains("on")));
+    sumToggle.addEventListener("click", () => {
+      const open = !summaryBox.classList.contains("open");
+      setSummaryOpen(open);
+      if (open && !sumText.textContent.trim()) startSummary();
+    });
+    function setFullscreenUI(on) {
+      document.documentElement.classList.toggle("is-fullscreen", !!on);
+      winFs.textContent = on ? "⤢" : "⛶";
+      winFs.title = on ? "Exit Full Screen" : "Full Screen";
+    }
+    winMin.addEventListener("click", () => {
+      if (window.copilot && typeof window.copilot.minimize === "function") {
+        window.copilot.minimize();
+      }
+    });
+    winFs.addEventListener("click", () => {
+      if (window.copilot && typeof window.copilot.toggleFullscreen === "function") {
+        window.copilot.toggleFullscreen();
+        return;
+      }
+      if (document.fullscreenElement) document.exitFullscreen();
+      else document.documentElement.requestFullscreen?.();
+    });
+    winClose.addEventListener("click", () => {
       if (window.copilot && typeof window.copilot.quit === "function") {
         window.copilot.quit();
         return;
       }
       window.close();
+    });
+    if (window.copilot && typeof window.copilot.onFullscreen === "function") {
+      window.copilot.onFullscreen(setFullscreenUI);
+      if (typeof window.copilot.isFullscreen === "function") {
+        window.copilot.isFullscreen().then(setFullscreenUI).catch(() => {});
+      }
+    }
+    document.addEventListener("fullscreenchange", () => {
+      setFullscreenUI(!!document.fullscreenElement);
     });
     settings.addEventListener("submit", (e) => {
       e.preventDefault();
@@ -453,10 +731,9 @@
       clearAllCards(true);
     });
     sumBtn.addEventListener("click", () => startSummary());
-    sumHide.addEventListener("click", () => summaryBox.classList.remove("open"));
-    cfgWhisper.addEventListener("change", () => {
-      whisperDirty = true;
-      saveConfig().finally(() => { whisperDirty = false; });
+    sumHide.addEventListener("click", () => clearSummary());
+    cfgConf.addEventListener("input", () => {
+      cfgConfVal.textContent = Number(cfgConf.value).toFixed(2);
     });
     cfgThemes.addEventListener("click", (e) => {
       const btn = e.target.closest(".theme-dot");
@@ -601,12 +878,52 @@
         }).catch(() => {});
       }
     }
+    function setQaUI(on) {
+      qaBtn.classList.toggle("on", !!on);
+      qaBtn.title = on ? "Q&A on" : "Q&A off";
+    }
+    async function setQaEnabled(on) {
+      setQaUI(on);
+      try {
+        const res = await fetch("/api/qa", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ enabled: !!on }),
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setQaUI(!on);
+          lat.textContent = body.error || "QA toggle failed";
+          return;
+        }
+        if (body.qa_enabled != null) setQaUI(body.qa_enabled);
+      } catch (e) {
+        setQaUI(!on);
+        lat.textContent = "QA toggle failed";
+      }
+    }
     function showSummary(text, pending) {
-      summaryBox.classList.add("open");
+      if (sumCleared) return;
       sumText.classList.toggle("pending", !!pending);
       sumText.textContent = text || "";
+      if (sumWanted) setSummaryOpen(true);
+    }
+    function clearSummary() {
+      sumCleared = true;
+      sumWanted = false;
+      sumBtn.disabled = false;
+      sumText.textContent = "";
+      sumText.classList.remove("pending");
+      setSummaryOpen(false);
+      fetch("/api/summary/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      }).catch(() => {});
     }
     async function startSummary() {
+      sumCleared = false;
+      sumWanted = true;
       sumBtn.disabled = true;
       showSummary("Starting summary…", true);
       try {
@@ -646,8 +963,15 @@
       }
       if (cfg.whisper_model && !whisperDirty) cfgWhisper.value = cfg.whisper_model;
       if (cfg.prompt != null) cfgPrompt.value = cfg.prompt;
+      if (cfg.summary_model) cfgSumModel.value = cfg.summary_model;
+      if (cfg.summary_prompt != null) cfgSumPrompt.value = cfg.summary_prompt;
+      if (cfg.recognition_confidence != null) {
+        cfgConf.value = String(cfg.recognition_confidence);
+        cfgConfVal.textContent = Number(cfg.recognition_confidence).toFixed(2);
+      }
       cfgWhisper.disabled = !!cfg.whisper_loading;
       if (cfg.whisper_loading) cfgNote.textContent = "Loading Whisper " + cfg.whisper_model + "…";
+      if (cfg.qa_enabled != null) setQaUI(cfg.qa_enabled);
     }
     async function loadConfig() {
       try {
@@ -669,6 +993,9 @@
             whisper_model: cfgWhisper.value,
             theme: document.documentElement.dataset.theme || "black",
             prompt: cfgPrompt.value,
+            summary_model: cfgSumModel.value.trim(),
+            summary_prompt: cfgSumPrompt.value,
+            recognition_confidence: Number(cfgConf.value),
           }),
         });
         const cfg = await res.json();
@@ -684,14 +1011,14 @@
         cfgNote.textContent = "Save failed";
       }
     }
-    document.querySelector(".panel").addEventListener("click", (e) => {
+    panel.addEventListener("click", (e) => {
       const btn = e.target.closest(".qa-del");
       if (!btn) return;
       e.preventDefault();
       removeCard(cardFromEl(btn.closest(".qa-card")), true);
     });
     function onEvent(ev) {
-      if (ev.t != null && ev.type !== "summary") {
+      if (ev.t != null) {
         const id = `${ev.t}:${ev.type}:${ev.label || ""}:${ev.text || ev.question || ""}`;
         if (seenEv.has(id)) return;
         seenEv.add(id);
@@ -751,6 +1078,13 @@
       } else if (ev.type === "summary") {
         showSummary(ev.text || "", !ev.done);
         if (ev.done) sumBtn.disabled = false;
+      } else if (ev.type === "summary_gone") {
+        sumCleared = true;
+        sumWanted = false;
+        sumBtn.disabled = false;
+        sumText.textContent = "";
+        sumText.classList.remove("pending");
+        setSummaryOpen(false);
       } else if (ev.type === "status") {
         if (!lat.textContent) lat.textContent = ev.text || "";
         if (settings.classList.contains("open") && ev.text) cfgNote.textContent = ev.text;

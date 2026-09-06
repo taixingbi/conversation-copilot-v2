@@ -123,9 +123,27 @@ class Transcriber:
             return text
         return ""
 
+    def _confident(self, seg) -> bool:
+        try:
+            need = float(os.environ.get("RECOGNITION_CONFIDENCE") or "0.70")
+        except ValueError:
+            need = 0.70
+        need = min(0.99, max(0.0, need))
+        no_speech = getattr(seg, "no_speech_prob", None)
+        if no_speech is not None:
+            return (1.0 - float(no_speech)) >= need
+        prob = getattr(seg, "probability", None)
+        if prob is None:
+            prob = getattr(seg, "p", None)
+        if prob is None:
+            return True
+        return float(prob) >= need
+
     def _transcribe_metal(self, samples: np.ndarray) -> list[str]:
         texts: list[str] = []
         for seg in self.model.transcribe(samples):
+            if not self._confident(seg):
+                continue
             text = self._keep(getattr(seg, "text", "") or "")
             if text:
                 texts.append(text)
@@ -142,6 +160,8 @@ class Transcriber:
         )
         texts: list[str] = []
         for seg in segments:
+            if not self._confident(seg):
+                continue
             text = self._keep(getattr(seg, "text", "") or "")
             if text:
                 texts.append(text)

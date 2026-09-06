@@ -173,7 +173,21 @@ class OverlayServer:
                             kwargs["theme"] = body.get("theme")
                         if "prompt" in body:
                             kwargs["prompt"] = body.get("prompt") or ""
+                        if "summary_model" in body:
+                            kwargs["summary_model"] = body.get("summary_model")
+                        if "summary_prompt" in body:
+                            kwargs["summary_prompt"] = body.get("summary_prompt") or ""
+                        if "recognition_confidence" in body:
+                            kwargs["recognition_confidence"] = body.get("recognition_confidence")
                         snap = runtime.apply(**kwargs)
+                    except ValueError as exc:
+                        self._json({"error": str(exc)}, 400)
+                        return
+                    self._json(snap)
+                    return
+                if path == "/api/qa":
+                    try:
+                        snap = runtime.set_qa_enabled(bool(body.get("enabled")))
                     except ValueError as exc:
                         self._json({"error": str(exc)}, 400)
                         return
@@ -186,6 +200,10 @@ class OverlayServer:
                         self._json({"error": str(exc)}, 400)
                         return
                     self._json(snap)
+                    return
+                if path == "/api/summary/delete":
+                    runtime.clear_summary()
+                    self._json({"ok": True})
                     return
                 if path == "/api/qa/delete":
                     q = str(body.get("question") or "").strip()

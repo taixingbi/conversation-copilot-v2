@@ -71,6 +71,11 @@ class EventBus:
         with self._lock:
             return list(self._recent)
 
+    def drop_summary(self) -> None:
+        with self._lock:
+            kept = [e for e in self._recent if e.get("type") not in ("summary", "summary_gone")]
+            self._recent = deque(kept, maxlen=self._keep)
+
     def drop_qa(self, question: str | None = None) -> None:
         with self._lock:
             if not question:

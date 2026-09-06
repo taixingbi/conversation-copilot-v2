@@ -129,24 +129,28 @@ def compact_qa(raw: str) -> str:
     return "\n\n".join(blocks)
 
 
+def default_summary() -> str:
+    return (
+        "Summarize the conversation for the candidate.\n"
+        "Reconstruct the real topics. Ignore greetings, repeats, and unclear ASR scraps.\n"
+        "Write short bullets: questions asked, answers given, and what is still open.\n"
+        "Simple words. No preamble. No heading."
+    )
+
+
+def user_summary_prompt() -> str:
+    return (os.environ.get("SUMMARY_PROMPT") or "").strip()
+
+
+def effective_summary_prompt() -> str:
+    return user_summary_prompt() or default_summary()
+
+
 def summary_prompt(*, qa: str = "", transcript: str = "") -> str:
     qa = compact_qa(qa) or "(none)"
     transcript = compact_transcript(transcript) or "(none)"
     return (
-        "You write a useful recap for a candidate in a live conversation.\n"
-        "The transcript is noisy ASR. People repeat. Greetings and fragments are junk.\n\n"
-        "Rules:\n"
-        "- Reconstruct the real topics. Do not list every line.\n"
-        "- Never write 'user said X multiple times' or count repeats.\n"
-        "- Ignore hellos, filler, one-word noise, and unclear scraps.\n"
-        "- If the same question was repeated, mention it once.\n"
-        "- Prefer interviewer lines (EXT / EXT-*) over the candidate repeating (MIC).\n"
-        "- Write at most 8 short bullets:\n"
-        "  • Question asked (the real question, in clear English)\n"
-        "  • Answer given, if any\n"
-        "  • What is still open\n"
-        "- If there was no real question, say that in ONE short line. Do not narrate the junk.\n"
-        "- Simple words. No preamble. No heading.\n\n"
+        f"{effective_summary_prompt()}\n\n"
         f"Q&A (may be empty):\n{qa}\n\n"
         f"Transcript (cleaned):\n{transcript}\n"
     )

@@ -3,6 +3,7 @@
 .env.*
 !.env.example
 qa_prompt.txt
+summary_prompt.txt
 
 venv/
 .venv/
