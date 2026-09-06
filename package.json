@@ -1,5 +1,5 @@
 {
-  "name": "interview-copilot",
+  "name": "conversation-copilot",
   "version": "1.0.0",
   "private": true,
   "main": "main.js",
@@ -14,8 +14,8 @@
     "electron-builder": "^26.0.12"
   },
   "build": {
-    "appId": "com.taixing.interview-copilot",
-    "productName": "Interview Copilot",
+    "appId": "com.taixing.conversation-copilot",
+    "productName": "conversation-copilot",
     "files": [
       "main.js",
       "preload.js"

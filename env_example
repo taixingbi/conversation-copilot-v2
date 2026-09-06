@@ -37,7 +37,7 @@ LLM_MODEL=qwen3-next-80b-a3b
 OVERLAY=1
 OVERLAY_PORT=8765
 # Dev window:  npm start
-# Pack app:    npm run backend && npm run dist   → dist/Interview Copilot.app
+# Pack app:    npm run backend && npm run dist   → dist/mac-arm64/conversation-copilot.app
 
 # Resume / STAR notes: put *.md in profile/ (example.md is ignored unless PROFILE_INCLUDE_EXAMPLE=1)
 # PROFILE_DIR=profile

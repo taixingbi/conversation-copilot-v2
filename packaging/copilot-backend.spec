@@ -1,12 +1,16 @@
 # -*- mode: python ; coding: utf-8 -*-
 # Output: dist-backend/copilot-backend  (pass --distpath dist-backend)
 
+from pathlib import Path
+
 from PyInstaller.utils.hooks import collect_all
 
+ROOT = Path(SPECPATH).resolve().parent
+
 datas = [
-    ("ui/overlay.html", "ui"),
-    ("prompt/qa_instructions.json", "prompt"),
-    ("profile/example.md", "profile"),
+    (str(ROOT / "ui/overlay.html"), "ui"),
+    (str(ROOT / "prompt/qa_instructions.json"), "prompt"),
+    (str(ROOT / "profile/example.md"), "profile"),
 ]
 binaries = []
 hidden = [
@@ -31,8 +35,8 @@ for pkg in ("sounddevice", "sherpa_onnx", "numpy", "pywhispercpp"):
     hidden += h
 
 a = Analysis(
-    ["main.py"],
-    pathex=[],
+    [str(ROOT / "main.py")],
+    pathex=[str(ROOT)],
     binaries=binaries,
     datas=datas,
     hiddenimports=hidden,
